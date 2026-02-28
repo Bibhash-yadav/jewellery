@@ -19,43 +19,64 @@ export default function Home() {
     <div className="bg-black text-white overflow-hidden">
 
       {/* HERO */}
-      <section className="relative min-h-[calc(100vh-80px)] flex items-center justify-center text-center">
+        <section
+        className="relative w-full min-h-screen flex items-center justify-center text-center overflow-hidden">
 
+        {/* Background Image */}
         <img
-          src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?q=80&w=1600"
-          className="absolute w-full h-full object-cover opacity-30"
+          src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?q=80&w=2000"
+          alt="Luxury Jewelry"
+          className="absolute inset-0 w-full h-full object-cover scale-105 animate-[slowZoom_20s_linear_infinite]"
         />
 
-        <div className="absolute inset-0 bg-black/70" />
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/65"></div>
 
-        <div className="relative px-6 max-w-3xl" data-aos="fade-up">
+        {/* Gold Glow Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black"></div>
 
-          <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+        {/* Content */}
+        <div
+          className="relative z-10 px-6 max-w-4xl"
+          data-aos="fade-up"
+        >
+
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-tight tracking-wide">
             Eternal Beauty,
             <br />
-            <span className="text-yellow-500">Crafted in Gold</span>
+            <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+              Crafted in Gold
+            </span>
           </h1>
 
-          <p className="text-gray-300 mt-6 text-lg md:text-xl">
-            Handcrafted jewelry designed to celebrate elegance, tradition, and modern luxury.
+          <p className="text-gray-300 mt-8 text-lg md:text-xl max-w-2xl mx-auto">
+            Discover handcrafted luxury jewellery that blends timeless
+            tradition with modern elegance.
           </p>
 
-          <div className="mt-10 flex gap-4 justify-center flex-wrap">
+          <div className="mt-12 flex gap-6 justify-center flex-wrap">
 
             <button
               onClick={() => navigate("/products")}
-              className="bg-yellow-500 text-black px-10 py-4 rounded-full font-semibold hover:bg-yellow-400 transition">
+              className="bg-yellow-500 text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-yellow-400 transition duration-300 shadow-lg shadow-yellow-500/30">
               Shop Collection
             </button>
 
             <button
               onClick={() => navigate("/products")}
-              className="border border-yellow-500 px-10 py-4 rounded-full hover:bg-yellow-500 hover:text-black transition">
+              className="border-2 border-yellow-500 px-10 py-4 rounded-full text-lg hover:bg-yellow-500 hover:text-black transition duration-300">
               Explore Designs
             </button>
 
           </div>
+
         </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-10 animate-bounce text-yellow-500 text-sm">
+          Scroll ↓
+        </div>
+
       </section>
 
 

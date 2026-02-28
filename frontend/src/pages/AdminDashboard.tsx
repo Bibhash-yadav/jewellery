@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { request } from "../api/client";
 import {
   Package,
@@ -7,9 +7,15 @@ import {
   Users
 } from "lucide-react";
 
+type Stats = {
+  total_revenue: number;
+  total_orders: number;
+  top_selling_products: any[];
+};
+
 export default function AdminDashboard() {
 
-  const [stats, setStats] = useState<any>({
+  const [stats, setStats] = useState<Stats>({
     total_revenue: 0,
     total_orders: 0,
     top_selling_products: []
@@ -20,9 +26,16 @@ export default function AdminDashboard() {
   const [liveVisitors, setLiveVisitors] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
+  // prevents double socket in React strict mode
+  const socketRef = useRef<WebSocket | null>(null);
+
   useEffect(() => {
     loadDashboard();
     connectSocket();
+
+    return () => {
+      socketRef.current?.close();
+    };
   }, []);
 
   // ---------------- LOAD INITIAL DATA ----------------
@@ -52,39 +65,61 @@ export default function AdminDashboard() {
 
   // ---------------- REALTIME SOCKET ----------------
   function connectSocket() {
+    if (socketRef.current) return; // avoid double connect
+
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/notifications?token=${token}`);
+    const WS_URL = import.meta.env.VITE_WS_URL;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    try {
+      const ws = new WebSocket(`${WS_URL}/ws/notifications?token=${token}`);
+      socketRef.current = ws;
 
-      // 🆕 New Order
-      if (data.type === "NEW_ORDER") {
-        setLatestOrders(prev => [
-          {
-            id: data.order_id,
-            user: { name: data.customer },
-            total_amount: data.amount
-          },
-          ...prev
-        ]);
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-        setStats(prev => ({
-          ...prev,
-          total_orders: prev.total_orders + 1
-        }));
-      }
+        // 🆕 New Order
+        if (data.type === "NEW_ORDER") {
+          setLatestOrders(prev => [
+            {
+              id: data.order_id,
+              user: { name: data.customer },
+              total_amount: data.amount
+            },
+            ...prev
+          ]);
 
-      // 💰 Revenue Update
-      if (data.type === "REVENUE_UPDATE") {
-        setStats(prev => ({
-          ...prev,
-          total_revenue: prev.total_revenue + data.amount
-        }));
-      }
-    };
+          setStats(prev => ({
+            total_revenue: prev?.total_revenue || 0,
+            total_orders: (prev?.total_orders || 0) + 1,
+            top_selling_products: prev?.top_selling_products || []
+          }));
+        }
+
+        // 💰 Revenue Update
+        if (data.type === "REVENUE_UPDATE") {
+          setStats(prev => ({
+            total_revenue: (prev?.total_revenue || 0) + (data.amount || 0),
+            total_orders: prev?.total_orders || 0,
+            top_selling_products: prev?.top_selling_products || []
+          }));
+        }
+
+        // 👥 Live visitors
+        if (data.type === "VISITORS") {
+          setLiveVisitors(data.count || 0);
+        }
+      };
+
+      ws.onclose = () => {
+        socketRef.current = null;
+        setTimeout(connectSocket, 4000); // auto reconnect
+      };
+
+    } catch (err) {
+      console.error("WebSocket error:", err);
+    }
   }
 
   if (loading) {
