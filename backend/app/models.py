@@ -7,6 +7,12 @@ from sqlalchemy.sql import func
 from .database import Base
 import enum
 
+from datetime import datetime
+from sqlalchemy.sql import func
+
+created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 # ================= ENUMS =================
 
 class UserRole(str, enum.Enum):
@@ -152,6 +158,8 @@ class CartItem(Base):
 
 # ================= ORDER =================
 
+# ================= ORDER =================
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -159,8 +167,21 @@ class Order(Base):
     user_id = Column(BigInteger, ForeignKey("users.id"))
     address_id = Column(BigInteger, ForeignKey("addresses.id"))
     total_amount = Column(Numeric(10, 2))
-    status = Column(Enum('pending', 'paid', 'shipped', 'delivered', 'cancelled', name='order_status'), default='pending')
-    payment_status = Column(Enum('pending', 'success', 'failed', name='payment_status'), default='pending')
+
+    # ✅ CLEAN ORDER STATUS (NO PAID)
+    status = Column(
+        Enum('pending', 'shipped', 'delivered', 'cancelled', name='order_status'),
+        default='pending',
+        nullable=False
+    )
+
+    # ✅ PAYMENT STATUS
+    payment_status = Column(
+        Enum('pending', 'success', 'failed', name='payment_status'),
+        default='pending',
+        nullable=False
+    )
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="orders")
@@ -182,3 +203,5 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+is_active = Column(Boolean, default=True)

@@ -7,28 +7,46 @@ from .models import UserRole
 
 class UserCreate(BaseModel):
     name: str
-    email: EmailStr
+    email: str
     password: str
-    phone: Optional[str] = None
+    phone: str
+    role: Optional[str] = "customer"
+    admin_secret: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserOut(BaseModel):
     id: int
     name: str
     email: str
-    role: UserRole
-    
+    phone: Optional[str] = None
+    role: str
+    status: str
+    created_at: Optional[datetime] = None
+
     class Config:
-        from_attributes = True
+        from_attributes = True   # (Pydantic v2 replacement of orm_mode)
 
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserOut
 
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserOut
+
+class UpdateProfile(BaseModel):
+    name: str
+    phone: str
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str    
 # --- CATEGORY SCHEMAS ---
 
 class CategoryBase(BaseModel):
@@ -73,7 +91,11 @@ class ProductOut(ProductBase):
         from_attributes = True
         
 # --- CART SCHEMAS ---
-
+class CreateOrderRequest(BaseModel):
+    address_id: int
+    product_id: Optional[int] = None
+    quantity: Optional[int] = 1
+    
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int = Field(default=1, gt=0) # Must be at least 1
@@ -114,6 +136,10 @@ class OrderItemOut(BaseModel):
     class Config:
         from_attributes = True
 
+from pydantic import BaseModel, field_validator
+from datetime import datetime
+from typing import List
+
 class OrderOut(BaseModel):
     id: int
     user_id: int
@@ -122,7 +148,16 @@ class OrderOut(BaseModel):
     status: str
     payment_status: str
     created_at: datetime
-    items: List[OrderItemOut] = [] # 🔥 Returns all specific items bought in this order
+    items: List[OrderItemOut] = []
+
+    # 🔥 THIS FIXES YOUR CRASH
+    @field_validator("status", "payment_status", mode="before")
+    @classmethod
+    def convert_enum(cls, v):
+        try:
+            return str(v.value)  # postgres enum -> string
+        except:
+            return str(v)
 
     class Config:
         from_attributes = True
@@ -147,3 +182,12 @@ class AddressOut(AddressBase):
 
     class Config:
         from_attributes = True
+
+class OrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+
+class OrderCreate(BaseModel):
+    address_id: int
+    payment_method: str
+    items: List[OrderItemCreate]

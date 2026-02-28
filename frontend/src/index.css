@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* remove default browser spacing */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: #000;
+}
+
+/* prevent center layout */
+#root {
+  max-width: 100%;
+}
+/* Luxury Gold Pattern Background */
+.luxury-bg {
+  background-color: #000;
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.06'%3E%3Cpath d='M40 5 L75 40 L40 75 L5 40 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
