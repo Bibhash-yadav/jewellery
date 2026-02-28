@@ -1,4 +1,4 @@
-const API = "https://nexchakra-treasure-showcase-platform-1.onrender.com/";
+const API = "https://nexchakra-treasure-showcase-platform-1.onrender.com/docs";
 
 export async function login(email: string, password: string) {
   const res = await fetch(`${API}/auth/login`, {

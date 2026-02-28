@@ -1,4 +1,4 @@
-const BASE_URL = "https://nexchakra-treasure-showcase-platform-1.onrender.com/";
+const BASE_URL = "https://nexchakra-treasure-showcase-platform-1.onrender.com/docs";
 
 export const request = async (url: string, options: any = {}) => {
   const token = localStorage.getItem("token");
