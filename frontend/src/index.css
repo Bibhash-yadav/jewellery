@@ -22,3 +22,63 @@ html, body, #root {
   background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.06'%3E%3Cpath d='M40 5 L75 40 L40 75 L5 40 Z'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: repeat;
 }
+/* ===== LUXURY ANIMATIONS ===== */
+
+/* slow hero zoom */
+@keyframes slowZoom {
+  0% { transform: scale(1.05); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1.05); }
+}
+
+/* text reveal */
+@keyframes fadeUpLuxury {
+  0% { opacity:0; transform: translateY(40px); }
+  100% { opacity:1; transform: translateY(0); }
+}
+
+/* gold shine sweep */
+@keyframes goldSweep {
+  0% { left:-120%; }
+  100% { left:120%; }
+}
+
+/* floating jewelry hover */
+@keyframes floatLuxury {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* glow pulse */
+@keyframes goldGlow {
+  0% { box-shadow:0 0 0px rgba(234,179,8,0.0); }
+  50% { box-shadow:0 0 25px rgba(234,179,8,0.6); }
+  100% { box-shadow:0 0 0px rgba(234,179,8,0.0); }
+}
+
+/* utility classes */
+.animate-fadeLuxury { animation: fadeUpLuxury 1s ease forwards; }
+.animate-float { animation: floatLuxury 6s ease-in-out infinite; }
+.animate-glow { animation: goldGlow 2.5s ease-in-out infinite; }
+
+.gold-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.gold-shine::after {
+  content: "";
+  position: absolute;
+  top:0;
+  left:-120%;
+  width:60%;
+  height:100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,215,0,0.6),
+    transparent
+  );
+  animation: goldSweep 3.5s infinite;
+}

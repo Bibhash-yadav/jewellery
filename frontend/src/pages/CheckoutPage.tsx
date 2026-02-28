@@ -16,7 +16,6 @@ export default function CheckoutPage() {
   const [loading,setLoading]=useState(true);
   const [placing,setPlacing]=useState(false);
 
-  // ⭐ PAYMENT STATE
   const [payment,setPayment]=useState("COD");
 
   const [form, setForm] = useState({
@@ -79,28 +78,28 @@ export default function CheckoutPage() {
       return;
     }
 
+    if(!buyNowProduct && !cart?.items?.length){
+      alert("Cart empty");
+      return;
+    }
+
     setPlacing(true);
 
     try{
 
       const payload:any={
         address_id:selected,
-        payment_method:payment   // ⭐ send payment type
+        payment_method:payment
       };
 
       if(buyNowProduct){
         payload.product_id=buyNowProduct.id;
         payload.quantity=1;
-      }else{
-        if(!cart?.items?.length){
-          alert("Cart empty");
-          return;
-        }
       }
 
       await createOrder(payload);
 
-      alert("Order placed successfully!");
+      alert("Order placed successfully!\nThanks for ordering ✨🎉");
       navigate("/orders");
 
     }catch(e){
@@ -123,10 +122,14 @@ export default function CheckoutPage() {
   );
 
   if(loading)
-    return <div className="text-white bg-black min-h-screen flex items-center justify-center">Loading checkout...</div>;
+    return (
+      <div className="text-white bg-black min-h-screen pt-20 flex items-center justify-center">
+        Loading checkout...
+      </div>
+    );
 
   return (
-    <div className="bg-black text-white min-h-screen pt-28 px-6">
+    <div className="bg-black text-white min-h-screen pt-20 px-4 md:px-6">
 
       <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10">
 
@@ -174,7 +177,7 @@ export default function CheckoutPage() {
             {addresses.map(a=>(
               <div key={a.id}
                 onClick={()=>setSelected(a.id)}
-                className={`p-4 mb-2 border rounded cursor-pointer ${
+                className={`p-4 mb-2 border rounded cursor-pointer transition ${
                   selected===a.id?"border-yellow-400":"border-gray-600"
                 }`}>
                 {a.full_address} — {a.city}
@@ -183,7 +186,7 @@ export default function CheckoutPage() {
 
           </div>
 
-          {/* ⭐ PAYMENT METHOD */}
+          {/* PAYMENT */}
           <div className="bg-[#111] p-6 rounded-2xl border border-[#222]">
             <h2 className="text-xl mb-4">Payment Method</h2>
 
@@ -229,7 +232,7 @@ export default function CheckoutPage() {
           <button
             disabled={placing}
             onClick={placeOrder}
-            className="mt-6 w-full bg-yellow-400 text-black py-3 rounded-xl font-semibold"
+            className="mt-6 w-full bg-yellow-400 text-black py-3 rounded-xl font-semibold hover:bg-yellow-300 transition"
           >
             {placing?"Placing Order...":"Place Order"}
           </button>

@@ -33,7 +33,6 @@ export default function MyOrders(){
     }
   };
 
-  // ⭐ ONLY 3 STEPS NOW
   const steps=["Placed","Shipped","Delivered"];
 
   const getStep=(status:string)=>{
@@ -59,17 +58,21 @@ export default function MyOrders(){
   };
 
   if(loading)
-    return <div className="text-white p-10 text-center">Loading orders...</div>;
+    return (
+      <div className="text-white bg-black min-h-screen pt-20 flex items-center justify-center">
+        Loading orders...
+      </div>
+    );
 
   return(
-    <div className="bg-black min-h-screen text-white px-4 md:px-10 py-10">
+    <div className="bg-black min-h-screen text-white pt-20 px-4 md:px-10 pb-10">
 
       <h1 className="text-3xl md:text-4xl font-bold mb-10 text-center">
         My Orders
       </h1>
 
       {orders.length===0 &&(
-        <div className="text-center bg-gray-900 p-10 rounded-2xl">
+        <div className="text-center bg-gray-900 p-10 rounded-2xl max-w-2xl mx-auto">
           <p className="text-gray-400 text-lg">You have not placed any order yet</p>
         </div>
       )}
@@ -100,7 +103,6 @@ export default function MyOrders(){
                 ₹{order.total_amount}
               </div>
 
-              {/* CANCEL BUTTON */}
               {order.status!=="delivered" && order.status!=="cancelled" && (
                 <button
                   onClick={()=>cancelOrder(order.id)}
@@ -113,13 +115,13 @@ export default function MyOrders(){
 
             </div>
 
-            {/* PRODUCT LIST */}
+            {/* PRODUCTS */}
             <div className="mt-6 space-y-4">
               {order.items?.map((item:any)=>(
                 <div key={item.id} className="flex gap-4 items-center bg-gray-800 p-4 rounded-xl">
 
                   <img
-                    src={item.product?.image_url}
+                    src={item.product?.image_url || "/placeholder.png"}
                     className="w-20 h-20 object-cover rounded-lg border border-gray-700"
                   />
 
@@ -138,7 +140,7 @@ export default function MyOrders(){
               ))}
             </div>
 
-            {/* TRACKING BAR */}
+            {/* TRACKING */}
             {order.status!=="cancelled" && (
             <div className="mt-8">
 

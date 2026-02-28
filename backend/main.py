@@ -526,6 +526,9 @@ def return_order(
 
 from fastapi import Body
 
+
+
+
 @app.post("/orders", response_model=schemas.OrderOut)
 async def create_order(
     data: dict = Body(...),
@@ -534,12 +537,13 @@ async def create_order(
 ):
     address_id = data.get("address_id")
     product_id = data.get("product_id")
-    quantity = data.get("quantity", 1)
+    quantity = int(data.get("quantity", 1))
+    selected_items = data.get("items")  # ⭐ NEW (list of cart item ids)
 
     if not address_id:
         raise HTTPException(status_code=400, detail="Address required")
 
-    # ✅ Check address belongs to user
+    # check address ownership
     address = db.query(models.Address).filter(
         models.Address.id == address_id,
         models.Address.user_id == current_user.id
@@ -548,49 +552,116 @@ async def create_order(
     if not address:
         raise HTTPException(status_code=404, detail="Address not found")
 
-    total_amount = 0
-    order_items = []
+    try:
 
-    # ---------------- BUY NOW ----------------
-    if product_id:
-        product = db.query(models.Product).filter(
-            models.Product.id == product_id,
-            models.Product.is_active == True
-        ).first()
+        # =========================================================
+        # BUY NOW ORDER
+        # =========================================================
+        if product_id:
 
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
+            product = db.query(models.Product)\
+                .with_for_update()\
+                .filter(models.Product.id == product_id, models.Product.is_active == True)\
+                .first()
 
-        if quantity > product.stock:
-            raise HTTPException(status_code=400, detail="Not enough stock")
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
 
-        total_amount = product.price * quantity
+            if quantity > product.stock:
+                raise HTTPException(status_code=400, detail="Not enough stock")
 
-        order = models.Order(
-            user_id=current_user.id,
-            address_id=address_id,
-            total_amount=total_amount,
-            status="pending",
-            payment_status="pending"
-        )
+            order = models.Order(
+                user_id=current_user.id,
+                address_id=address_id,
+                total_amount=product.price * quantity,
+                status="pending",
+                payment_status="pending"
+            )
 
-        db.add(order)
+            db.add(order)
+            db.flush()  # get order.id without commit
+
+            db.add(models.OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=quantity,
+                price=product.price
+            ))
+
+            product.stock -= quantity
+
+        # =========================================================
+        # CART / PARTIAL CART ORDER
+        # =========================================================
+        else:
+
+            cart = db.query(models.Cart)\
+                .options(joinedload(models.Cart.items))\
+                .filter(models.Cart.user_id == current_user.id)\
+                .first()
+
+            if not cart or not cart.items:
+                raise HTTPException(status_code=400, detail="Cart is empty")
+
+            # 🔥 filter selected items
+            cart_items = cart.items
+            if selected_items:
+                cart_items = [i for i in cart.items if i.id in selected_items]
+
+            if not cart_items:
+                raise HTTPException(status_code=400, detail="No items selected")
+
+            order = models.Order(
+                user_id=current_user.id,
+                address_id=address_id,
+                status="pending",
+                payment_status="pending",
+                total_amount=0
+            )
+
+            db.add(order)
+            db.flush()
+
+            total_amount = 0
+
+            for item in cart_items:
+                product = db.query(models.Product)\
+                    .with_for_update()\
+                    .filter(models.Product.id == item.product_id)\
+                    .first()
+
+                if item.quantity > product.stock:
+                    raise HTTPException(status_code=400, detail=f"{product.title} out of stock")
+
+                total_amount += product.price * item.quantity
+
+                db.add(models.OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    quantity=item.quantity,
+                    price=product.price
+                ))
+
+                product.stock -= item.quantity
+
+            order.total_amount = total_amount
+
+            # 🔥 remove only ordered items (NOT whole cart)
+            for item in cart_items:
+                db.delete(item)
+
+        # =========================================================
+        # FINAL COMMIT
+        # =========================================================
         db.commit()
-        db.refresh(order)
 
-        order_item = models.OrderItem(
-            order_id=order.id,
-            product_id=product.id,
-            quantity=quantity,
-            price=product.price
-        )
+        # reload order with items
+        order = db.query(models.Order)\
+            .options(joinedload(models.Order.items).joinedload(models.OrderItem.product))\
+            .filter(models.Order.id == order.id)\
+            .first()
 
-        product.stock -= quantity
-
-        db.add(order_item)
-        db.commit()
-
-        # 🔔 Notify customer
+        # 🔔 notify customer
         await manager.send_to_user(current_user.id, {
             "type": "ORDER_CREATED",
             "title": "Order Placed",
@@ -599,60 +670,55 @@ async def create_order(
 
         return order
 
-    # ---------------- CART ORDER ----------------
-    cart = db.query(models.Cart).filter(
-        models.Cart.user_id == current_user.id
-    ).first()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-    if not cart or not cart.items:
-        raise HTTPException(status_code=400, detail="Cart is empty")
+@app.patch("/orders/{order_id}/cancel", response_model=schemas.OrderOut)
+async def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    order = db.query(models.Order)\
+        .options(joinedload(models.Order.items))\
+        .filter(models.Order.id == order_id)\
+        .first()
 
-    order = models.Order(
-        user_id=current_user.id,
-        address_id=address_id,
-        status="pending",
-        payment_status="pending",
-        total_amount=0
-    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    db.add(order)
-    db.commit()
-    db.refresh(order)
+    if order.user_id != current_user.id and current_user.role != models.UserRole.admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-    for item in cart.items:
-        product = db.query(models.Product).filter(
-            models.Product.id == item.product_id
-        ).first()
-
-        if item.quantity > product.stock:
-            raise HTTPException(status_code=400, detail=f"{product.title} out of stock")
-
-        total_amount += product.price * item.quantity
-
-        order_item = models.OrderItem(
-            order_id=order.id,
-            product_id=product.id,
-            quantity=item.quantity,
-            price=product.price
+    # Allow cancel only before shipped
+    if order.status.lower() in ["shipped", "delivered", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order already {order.status}. Cannot cancel."
         )
 
-        product.stock -= item.quantity
-        db.add(order_item)
+    try:
+        # RESTOCK
+        for item in order.items:
+            product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+            if product:
+                product.stock += item.quantity
 
-    order.total_amount = total_amount
+        order.status = "cancelled"
 
-    # clear cart
-    db.query(models.CartItem).filter(
-        models.CartItem.cart_id == cart.id
-    ).delete()
+        db.commit()
+        db.refresh(order)
 
-    db.commit()
+        # reload relationships properly
+        order = db.query(models.Order)\
+            .options(joinedload(models.Order.items).joinedload(models.OrderItem.product))\
+            .filter(models.Order.id == order_id)\
+            .first()
 
-    # 🔔 Notify customer
-    await manager.send_to_user(current_user.id, {
-        "type": "ORDER_CREATED",
-        "title": "Order Placed",
-        "message": f"Your order #{order.id} has been placed successfully"
-    })
+        return order
 
-    return order
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -1,158 +1,190 @@
 import { useEffect, useState } from "react";
 import { request } from "../api/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function CartPage(){
 
   const [cart,setCart]=useState<any>(null);
+  const [address,setAddress]=useState<number|null>(null);
   const [addresses,setAddresses]=useState<any[]>([]);
-  const [selected,setSelected]=useState<number | null>(null);
   const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState<number[]>([]);
+
   const navigate=useNavigate();
+  const [params]=useSearchParams();
+
+  const buyProduct=params.get("product");
+  const buyQty=Number(params.get("qty")||1);
 
   const load=async()=>{
-    try{
-      const cartData=await request("/cart");
-      const addr=await request("/addresses");
+    const c=await request("/cart");
+    const a=await request("/addresses");
 
-      setCart(cartData);
-      setAddresses(addr);
+    setCart(c);
+    setAddresses(a);
 
-      if(addr.length>0 && !selected)
-        setSelected(addr[0].id);
+    if(a?.length) setAddress(a[0].id);
 
-    }finally{
-      setLoading(false);
+    if(c?.items){
+      setSelected(c.items.map((i:any)=>i.id));
     }
+
+    setLoading(false);
   };
 
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{
+    if(buyProduct){
+      request(`/products/${buyProduct}`).then(p=>{
+        setCart({
+          items:[{
+            id:999,
+            quantity:buyQty,
+            product:p
+          }]
+        });
+        setSelected([999]);
+        setLoading(false);
+      });
+    }else{
+      load();
+    }
+  },[]);
 
-  // CHANGE QUANTITY
-  const changeQty=async(id:number,qty:number)=>{
-    if(qty<0) return;
+  // toggle select
+  const toggle=(id:number)=>{
+    setSelected(prev=>
+      prev.includes(id)
+        ? prev.filter(i=>i!==id)
+        : [...prev,id]
+    );
+  };
 
-    await request(`/cart/items/${id}?quantity=${qty}`,{method:"PATCH"});
+  // update quantity
+  const changeQty=async(id:number,q:number)=>{
+    if(q<1) return;
+    await request(`/cart/items/${id}?quantity=${q}`,{method:"PATCH"});
     load();
   };
 
-  // REMOVE ITEM
-  const removeItem=async(id:number)=>{
-    await request(`/cart/items/${id}?quantity=0`,{method:"PATCH"});
-    load();
-  };
-
-  // PLACE ORDER (NEW API)
   const placeOrder=async()=>{
-    if(!selected) return alert("Please select address");
+    if(!address) return alert("Select address");
+    if(selected.length===0) return alert("Select at least one item");
 
-    if(!cart?.items?.length) return alert("Cart is empty");
+    if(buyProduct){
+      await request("/orders",{
+        method:"POST",
+        body:{
+          address_id:address,
+          product_id:Number(buyProduct),
+          quantity:buyQty
+        }
+      });
+    }else{
+      await request("/orders",{
+        method:"POST",
+        body:{
+          address_id:address,
+          items:selected
+        }
+      });
+    }
 
-    await request("/orders",{
-      method:"POST",
-      body:JSON.stringify({
-        address_id:selected
-      })
-    });
-
-    alert("Order placed successfully!");
     navigate("/orders");
   };
 
+  // LOADING STATE (fixed navbar safe)
   if(loading)
-    return <div className="text-white p-10 bg-black min-h-screen">Loading...</div>;
+    return (
+      <div className="bg-black text-white min-h-screen pt-20 flex items-center justify-center">
+        Loading...
+      </div>
+    );
 
+  // EMPTY STATE (fixed navbar safe)
   if(!cart?.items?.length)
-    return <div className="text-white p-10 bg-black min-h-screen text-center">Cart empty</div>;
+    return (
+      <div className="bg-black text-white min-h-screen pt-20 flex items-center justify-center">
+        Cart Empty
+      </div>
+    );
 
-  const total = cart.items.reduce(
-    (sum:any,item:any)=>sum + item.product.price*item.quantity,
-    0
-  );
+  const total=cart.items
+    .filter((i:any)=>selected.includes(i.id))
+    .reduce((s:any,i:any)=>s+i.product.price*i.quantity,0);
 
   return(
-    <div className="bg-black min-h-screen text-white p-6">
+    <div className="bg-black min-h-screen text-white pt-20 px-4 md:px-6 pb-10 max-w-5xl mx-auto">
 
-      <div className="max-w-6xl mx-auto space-y-8">
+      <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
-        <h1 className="text-3xl font-bold">Shopping Cart</h1>
-
-        {/* CART ITEMS */}
+      {/* PRODUCTS */}
+      <div className="space-y-4">
         {cart.items.map((item:any)=>(
+          <div key={item.id} className="flex gap-4 bg-gray-900 p-4 rounded-xl items-center">
 
-          <div key={item.id} className="flex flex-col md:flex-row gap-6 bg-gray-900 p-4 rounded-2xl">
+            {!buyProduct && (
+              <input
+                type="checkbox"
+                checked={selected.includes(item.id)}
+                onChange={()=>toggle(item.id)}
+                className="w-5 h-5 accent-yellow-500"
+              />
+            )}
 
-            <img src={item.product.image_url} className="w-32 h-32 rounded-xl object-cover"/>
+            <img
+              src={item.product.image_url}
+              className="w-24 h-24 object-cover rounded"
+            />
 
-            <div className="flex-1 space-y-2">
-              <h2 className="font-semibold">{item.product.title}</h2>
+            <div className="flex-1">
+              <p className="font-semibold">{item.product.title}</p>
               <p className="text-yellow-400">₹{item.product.price}</p>
 
-              <div className="flex gap-3 items-center">
-
-                <button
-                  onClick={()=>changeQty(item.id,item.quantity-1)}
-                  className="bg-gray-700 px-3 rounded hover:bg-gray-600"
-                >−</button>
-
-                <span className="px-3">{item.quantity}</span>
-
-                <button
-                  onClick={()=>changeQty(item.id,item.quantity+1)}
-                  className="bg-gray-700 px-3 rounded hover:bg-gray-600"
-                >+</button>
-
-                <button
-                  onClick={()=>removeItem(item.id)}
-                  className="ml-4 text-red-400 hover:text-red-300 text-sm"
-                >
-                  Remove
-                </button>
-
-              </div>
+              {!buyProduct && (
+                <div className="flex gap-3 mt-2 items-center">
+                  <button
+                    onClick={()=>changeQty(item.id,item.quantity-1)}
+                    className="bg-gray-700 px-3 rounded">−</button>
+                  <span>{item.quantity}</span>
+                  <button
+                    onClick={()=>changeQty(item.id,item.quantity+1)}
+                    className="bg-gray-700 px-3 rounded">+</button>
+                </div>
+              )}
             </div>
 
-            <div className="font-bold text-xl text-yellow-400">
-              ₹{(item.product.price*item.quantity).toFixed(2)}
+            <div className="text-yellow-400 font-bold">
+              ₹{item.product.price*item.quantity}
             </div>
-
           </div>
         ))}
+      </div>
 
-        {/* ADDRESS + TOTAL */}
-        <div className="bg-gray-900 p-6 rounded-2xl space-y-4">
+      {/* SUMMARY */}
+      <div className="mt-6 space-y-4 bg-gray-900 p-6 rounded-xl">
 
-          <h2 className="text-xl font-semibold">Delivery Address</h2>
+        <select
+          value={address||""}
+          onChange={e=>setAddress(Number(e.target.value))}
+          className="w-full p-3 bg-gray-800 rounded">
+          <option value="">Select address</option>
+          {addresses.map(a=>(
+            <option key={a.id} value={a.id}>
+              {a.full_address}, {a.city}
+            </option>
+          ))}
+        </select>
 
-          <select
-            value={selected || ""}
-            onChange={e=>setSelected(Number(e.target.value))}
-            className="w-full p-3 bg-gray-800 rounded"
-          >
-            <option value="">Select Address</option>
-            {addresses.map(a=>(
-              <option key={a.id} value={a.id}>
-                {a.full_address}, {a.city}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex justify-between items-center pt-4 border-t border-gray-700">
-
-            <div className="text-2xl font-bold">
-              Total: <span className="text-yellow-400">₹{total.toFixed(2)}</span>
-            </div>
-
-            <button
-              onClick={placeOrder}
-              className="bg-yellow-500 text-black px-8 py-3 rounded-xl hover:bg-yellow-400 transition"
-            >
-              Place Order
-            </button>
-
-          </div>
-
+        <div className="flex justify-between text-xl font-bold">
+          <span>Total</span>
+          <span className="text-yellow-400">₹{total}</span>
         </div>
+
+        <button
+          onClick={placeOrder}
+          className="w-full bg-yellow-500 text-black py-3 rounded-xl hover:bg-yellow-400 transition">
+          Place Order (COD)
+        </button>
 
       </div>
 

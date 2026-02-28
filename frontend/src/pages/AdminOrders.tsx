@@ -31,11 +31,7 @@ export default function AdminOrders() {
 
   async function changeStatus(orderId:number,newStatus:string){
     setUpdating(orderId);
-
-    await request(`/admin/orders/${orderId}/status?status=${newStatus}`,{
-      method:"PATCH"
-    });
-
+    await request(`/admin/orders/${orderId}/status?status=${newStatus}`,{method:"PATCH"});
     await loadOrders();
     setUpdating(null);
   }
@@ -77,7 +73,7 @@ export default function AdminOrders() {
                 </span>
 
                 <p className="text-xs mt-1">
-                  Payment: 
+                  Payment:
                   <span className={`ml-1 font-semibold ${
                     order.payment_status==="success"
                       ?"text-green-600"
@@ -90,19 +86,46 @@ export default function AdminOrders() {
 
             </div>
 
-            {/* PRODUCTS */}
-            <div className="border-t pt-4 space-y-3">
+            {/* PRODUCTS FULL DETAILS */}
+            <div className="border-t pt-4 space-y-4">
+
               {order.items?.map((item:any)=>(
-                <div key={item.id} className="flex justify-between bg-gray-50 p-3 rounded-lg">
-                  <div>
-                    <p className="font-medium">{item.product?.title}</p>
-                    <p className="text-gray-500 text-sm">Qty: {item.quantity}</p>
+
+                <div key={item.id} className="flex gap-4 bg-gray-50 p-4 rounded-xl items-center">
+
+                  <img
+                    src={item.product?.image_url}
+                    className="w-20 h-20 object-cover rounded-lg border"
+                  />
+
+                  <div className="flex-1">
+                    <p className="font-semibold text-lg">
+                      {item.product?.title}
+                    </p>
+
+                    <p className="text-gray-500 text-sm">
+                      Unit Price: ₹{item.price}
+                    </p>
+
+                    <p className="text-gray-500 text-sm">
+                      Quantity: {item.quantity}
+                    </p>
+
+                    <p className="text-gray-400 text-xs">
+                      Product ID: {item.product?.id}
+                    </p>
                   </div>
-                  <div className="font-semibold">
-                    ₹{Number(item.price * item.quantity).toLocaleString()}
+
+                  <div className="text-right">
+                    <p className="font-bold text-lg">
+                      ₹{Number(item.price * item.quantity).toLocaleString()}
+                    </p>
                   </div>
+
                 </div>
+
               ))}
+
             </div>
 
             {/* ACTION BUTTONS */}

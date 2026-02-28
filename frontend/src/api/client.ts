@@ -3,21 +3,39 @@ const BASE_URL = "http://127.0.0.1:8000";
 export const request = async (url: string, options: any = {}) => {
   const token = localStorage.getItem("token");
 
-  const res = await fetch(BASE_URL + url, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
-    credentials: "include",
-    ...options,
-  });
+  // Merge headers correctly
+  const headers: any = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || "Something went wrong");
+  // Attach token if exists
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  if (res.status === 204) return null;
+  // Auto stringify body if object
+  let body = options.body;
+  if (body && typeof body === "object" && !(body instanceof FormData)) {
+    body = JSON.stringify(body);
+  }
 
-  return res.json();
+  const res = await fetch(BASE_URL + url, {
+    ...options,
+    headers,
+    body,
+    credentials: "include",
+  });
+
+  // Try read json safely
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok) {
+    throw new Error(data?.detail || "Something went wrong");
+  }
+
+  return data;
 };
