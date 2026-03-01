@@ -56,7 +56,7 @@ export default function Products(){
   }
 
   return(
-    <div className="bg-black min-h-screen text-white px-6 py-12">
+    <div className="bg-black min-h-screen text-white px-6 py-20">
 
       <h1 className="text-4xl font-semibold text-center text-[#d4af37] mb-10 tracking-wide">
         Our Collection
