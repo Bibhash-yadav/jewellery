@@ -1,40 +1,47 @@
-const BASE_URL = "https://nexchakra-treasure-showcase-platform-1.onrender.com/docs";
+const BASE_URL = "https://nexchakra-treasure-showcase-platform-1.onrender.com";
 
 export const request = async (url: string, options: any = {}) => {
+
   const token = localStorage.getItem("token");
 
-  // Merge headers correctly
+  const isFormData = options.body instanceof FormData;
+
+  // Headers
   const headers: any = {
-    "Content-Type": "application/json",
     ...(options.headers || {})
   };
 
-  // Attach token if exists
+  // Only set JSON header if NOT formdata
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Attach auth token
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Auto stringify body if object
+  // Stringify only normal objects
   let body = options.body;
-  if (body && typeof body === "object" && !(body instanceof FormData)) {
+  if (body && typeof body === "object" && !isFormData) {
     body = JSON.stringify(body);
   }
 
-  const res = await fetch(BASE_URL + url, {
+  const res = await fetch(`${BASE_URL}${url}`, {
     ...options,
     headers,
     body,
-    credentials: "include",
+    credentials: "include", // important for cookies
   });
 
-  // Try read json safely
+  // Safe JSON read
   let data: any = null;
   try {
     data = await res.json();
   } catch {}
 
   if (!res.ok) {
-    throw new Error(data?.detail || "Something went wrong");
+    throw new Error(data?.detail || `Error ${res.status}`);
   }
 
   return data;

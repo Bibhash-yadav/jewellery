@@ -22,7 +22,7 @@ app = FastAPI(title="NexChakra Premium Jewelry API")
 # Allow Frontend to talk to Backend (Vite/Local Dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://jewellery-zo7x.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

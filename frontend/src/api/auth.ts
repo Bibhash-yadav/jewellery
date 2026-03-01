@@ -1,4 +1,4 @@
-const API = "https://nexchakra-treasure-showcase-platform-1.onrender.com/docs";
+const API = "https://nexchakra-treasure-showcase-platform-1.onrender.com";
 
 export async function login(email: string, password: string) {
   const res = await fetch(`${API}/auth/login`, {
@@ -6,6 +6,7 @@ export async function login(email: string, password: string) {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",   // ⭐ VERY IMPORTANT
     body: JSON.stringify({ email, password }),
   });
 
@@ -23,6 +24,7 @@ export async function register(data: any) {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",   // ⭐ VERY IMPORTANT
     body: JSON.stringify(data),
   });
 
